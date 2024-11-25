@@ -50,8 +50,8 @@ def procesar_datos(content):
 st.title("Generador de archivo Excel con regex Santiago Vangeas")
 st.write(
     """
-    Esta aplicación utiliza expresiones regulares para procesar un archivo 
-    CSV y genera un archivo Excel estructurado con los datos encontrados.
+    Esta app usa re para procesar un archivo 
+    CSV desordenado .
     """
 )
 
