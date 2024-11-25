@@ -47,7 +47,7 @@ def procesar_datos(content):
     return data
     
 # Configuración de la app
-st.title("Generador de archivo Excel con regex")
+st.title("Generador de archivo Excel con regex Santiago Vangeas")
 st.write(
     """
     Esta aplicación utiliza expresiones regulares para procesar un archivo 
