@@ -11,7 +11,7 @@ def procesar_archivo(csv_data):
 
     # Definir patrones regex
     patron_producto = re.compile(
-        r"(?P<numero_serie>\d+),\s*(?P<nombre_producto>[A-Za-z\s]+),\s*\$(?P<valor>\d+\.?\d*),\s*(?P<fecha_compra>\d{2}/\d{2}/\d{2})"
+        r"(?P<numero_serie>\w+-\d+),\s*(?P<nombre_producto>[A-Za-z\s]+),\s*\$(?P<valor>\d+\.\d{2}),\s*(?P<fecha_compra>\d{2}/\d{2}/\d{2})"
     )
     patron_contacto = re.compile(
         r"(?P<nombre>[A-Za-z\s]+),\s*(?P<email>[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+),\s*(?P<telefono>\+57\s\d{10})"
@@ -35,6 +35,12 @@ def procesar_archivo(csv_data):
     df_productos = pd.DataFrame(productos)
     df_contactos = pd.DataFrame(contactos)
 
+    # Verificar DataFrames vacíos y devolver resultados
+    if df_productos.empty:
+        df_productos = pd.DataFrame(columns=["Número de serie", "Nombre del producto", "Valor", "Fecha de compra"])
+    if df_contactos.empty:
+        df_contactos = pd.DataFrame(columns=["Nombre", "Correo Electrónico", "Teléfono"])
+
     return df_productos, df_contactos
 
 # Función para convertir DataFrame a archivo Excel
@@ -43,6 +49,7 @@ def convertir_a_excel(df_productos, df_contactos):
     with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
         df_productos.to_excel(writer, sheet_name="Productos", index=False)
         df_contactos.to_excel(writer, sheet_name="Contactos", index=False)
+    output.seek(0)
     return output.getvalue()
 
 # Interfaz de Streamlit
@@ -70,8 +77,8 @@ if archivo_subido is not None:
             st.download_button(
                 label="Descargar archivo Excel",
                 data=archivo_excel,
-                file_name="productos_y_contactos.xls",
-                mime="application/vnd.ms-excel"
+                file_name="productos_y_contactos.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
     except Exception as e:
         st.error(f"Error procesando el archivo: {e}")
