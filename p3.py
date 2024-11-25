@@ -7,44 +7,39 @@ from io import BytesIO
 def procesar_archivo(csv_data):
     # Leer el archivo como texto
     text = csv_data.decode('utf-8')
-    filas = text.split("\n")
-
+    
     # Definir patrones regex
-    patron_producto = re.compile(
-        r"(?P<codigo_producto>\d{5,6}),\s*\$(?P<precio>\d+\.\d+),\s*(?P<fecha_compra>\d{2}/\d{2}/\d{2})"
-    )
-    patron_contacto = re.compile(
-        r"(?P<nombre>[A-Za-z\s]+),\s*(?P<email>[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+),\s*(?P<telefono>\+57\s\d{10})"
-    )
+    patron_producto = re.compile(r"(?P<codigo>\d{5,6}),.*?,.*?(?P<precio>\d+\.\d+),.*?(?P<fecha>\d{2}/\d{2}/\d{2})")
+    patron_contacto = re.compile(r"(?P<nombre>[A-Za-z\s]+),.*?(?P<email>[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+),.*?(?P<telefono>\+\d{1,3}\s\d{7,15})")
 
-    registros = []
+    # Buscar coincidencias para productos y contactos
+    productos = patron_producto.findall(text)
+    contactos = patron_contacto.findall(text)
 
-    for fila in filas:
-        # Buscar información de productos
-        producto = patron_producto.search(fila)
-        contacto = patron_contacto.search(fila)
-        
-        # Construir un registro con datos disponibles
-        registro = {
-            "Código del Producto": producto.group("codigo_producto") if producto else "",
-            "Precio": producto.group("precio") if producto else "",
-            "Fecha de Compra": producto.group("fecha_compra") if producto else "",
-            "Nombre": contacto.group("nombre") if contacto else "",
-            "Correo Electrónico": contacto.group("email") if contacto else "",
-            "Teléfono": contacto.group("telefono") if contacto else "",
+    # Crear DataFrame combinado
+    datos_combinados = []
+    max_filas = max(len(productos), len(contactos))
+
+    for i in range(max_filas):
+        fila = {
+            "Código del Producto": productos[i][0] if i < len(productos) else None,
+            "Precio": productos[i][1] if i < len(productos) else None,
+            "Fecha de Compra": productos[i][2] if i < len(productos) else None,
+            "Nombre": contactos[i][0] if i < len(contactos) else None,
+            "Correo Electrónico": contactos[i][1] if i < len(contactos) else None,
+            "Teléfono": contactos[i][2] if i < len(contactos) else None,
         }
-        registros.append(registro)
+        datos_combinados.append(fila)
 
-    # Crear un DataFrame con los registros
-    df = pd.DataFrame(registros)
-    return df
+    df_combinado = pd.DataFrame(datos_combinados)
+    
+    return df_combinado
 
 # Función para convertir DataFrame a archivo Excel
-def convertir_a_excel(df):
+def convertir_a_excel(df_combinado):
     output = BytesIO()
     with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-        df.to_excel(writer, sheet_name="Datos Extraídos", index=False)
-    output.seek(0)
+        df_combinado.to_excel(writer, sheet_name="Datos Extraídos", index=False)
     return output.getvalue()
 
 # Interfaz de Streamlit
@@ -57,20 +52,20 @@ archivo_subido = st.file_uploader("Sube tu archivo CSV", type=["csv"])
 if archivo_subido is not None:
     # Procesar el archivo
     try:
-        df_datos = procesar_archivo(archivo_subido.read())
+        df_combinado = procesar_archivo(archivo_subido.read())
 
-        # Mostrar DataFrame
+        # Mostrar DataFrame combinado
         st.subheader("Datos extraídos")
-        st.dataframe(df_datos)
+        st.dataframe(df_combinado)
 
         # Botón para descargar archivo Excel
         if st.button("Generar archivo Excel"):
-            archivo_excel = convertir_a_excel(df_datos)
+            archivo_excel = convertir_a_excel(df_combinado)
             st.download_button(
                 label="Descargar archivo Excel",
                 data=archivo_excel,
-                file_name="datos_extraidos.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                file_name="datos_extraidos.xls",
+                mime="application/vnd.ms-excel"
             )
     except Exception as e:
         st.error(f"Error procesando el archivo: {e}")
