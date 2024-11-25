@@ -45,7 +45,7 @@ def evaluar_contrasena(contrasena):
 st.title("Evaluador de Contraseñas")
 contrasena = st.text_input("Ingrese su contraseña:")
 
-st.write("Desarrollado por: Sebastián Rodríguez Suarez")
+st.write("Desarrollado por: Santiago Vanegas Vasquez")
 
 if contrasena:
     resultado = evaluar_contrasena(contrasena)
