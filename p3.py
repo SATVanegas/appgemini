@@ -7,19 +7,34 @@ from io import BytesIO
 def procesar_archivo(csv_data):
     # Leer el archivo como texto
     text = csv_data.decode('utf-8')
-    
-    # Definir patrones regex
-    patron_producto = re.compile(r"(?P<numero_serie>\w+-\d+),\s*(?P<nombre_producto>.+?),\s*\$(?P<valor>\d+\.\d{2}),\s*(?P<fecha_compra>\d{2}/\d{2}/\d{2})")
-    patron_contacto = re.compile(r"(?P<nombre>[\w\s]+),\s*(?P<email>[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+),\s*(?P<telefono>\d{7,15})")
+    filas = text.split("\n")
 
-    # Buscar coincidencias para productos y contactos
-    productos = patron_producto.findall(text)
-    contactos = patron_contacto.findall(text)
+    # Definir patrones regex
+    patron_producto = re.compile(
+        r"(?P<numero_serie>\d+),\s*(?P<nombre_producto>[A-Za-z\s]+),\s*\$(?P<valor>\d+\.?\d*),\s*(?P<fecha_compra>\d{2}/\d{2}/\d{2})"
+    )
+    patron_contacto = re.compile(
+        r"(?P<nombre>[A-Za-z\s]+),\s*(?P<email>[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+),\s*(?P<telefono>\+57\s\d{10})"
+    )
+
+    productos = []
+    contactos = []
+
+    for fila in filas:
+        # Buscar información de productos
+        producto = patron_producto.search(fila)
+        if producto:
+            productos.append(producto.groupdict())
+
+        # Buscar información de contacto
+        contacto = patron_contacto.search(fila)
+        if contacto:
+            contactos.append(contacto.groupdict())
 
     # Crear DataFrames
-    df_productos = pd.DataFrame(productos, columns=["Número de serie", "Nombre del producto", "Valor", "Fecha de compra"])
-    df_contactos = pd.DataFrame(contactos, columns=["Nombre", "Correo Electrónico", "Teléfono"])
-    
+    df_productos = pd.DataFrame(productos)
+    df_contactos = pd.DataFrame(contactos)
+
     return df_productos, df_contactos
 
 # Función para convertir DataFrame a archivo Excel
