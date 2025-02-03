@@ -6,18 +6,27 @@ import geopandas as gpd
 from shapely.geometry import Point
 
 
-def cargar_datos():
-    """Carga datos desde la URL fija del archivo de deforestación.
+def cargar_datos(archivo, url):
+    """Carga datos desde un archivo cargado por el usuario o desde una URL.
+
+    Args:
+        archivo (UploadedFile): Archivo cargado por el usuario.
+        url (str): URL proporcionada por el usuario.
 
     Returns:
         pd.DataFrame: DataFrame con los datos cargados e interpolados.
     """
-    url = (
-        "https://raw.githubusercontent.com/gabrielawad/programacion-para-ingenieria/"
-        "refs/heads/main/archivos-datos/aplicaciones/deforestacion.csv"
-    )
-    df = pd.read_csv(url)
-    return df.interpolate(method="linear")
+    if archivo is not None:
+        df = pd.read_csv(archivo)
+    elif url:
+        df = pd.read_csv(url)
+    else:
+        st.warning("Por favor, carga un archivo o proporciona una URL.")
+        return None
+
+    # Interpolar datos en blanco
+    df = df.interpolate(method="linear")
+    return df
 
 
 def mostrar_estadisticas(df):
@@ -119,8 +128,12 @@ def main():
     st.title("Análisis de Deforestación")
     st.sidebar.title("Opciones")
 
+    # Permitir al usuario cargar un archivo o proporcionar una URL
+    archivo = st.sidebar.file_uploader("Carga tu archivo CSV", type=["csv"])
+    url = st.sidebar.text_input("O proporciona una URL de un archivo CSV")
+
     # Cargar datos
-    df = cargar_datos()
+    df = cargar_datos(archivo, url)
 
     if df is not None:
         # Menú de opciones en la barra lateral
