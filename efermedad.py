@@ -6,46 +6,45 @@ import geopandas as gpd
 from shapely.geometry import Point
 
 
-def cargar_datos():
-    """Carga datos desde la URL fija del archivo de análisis de enfermedades.
+def cargar_datos(archivo=None, url=None):
+    """Carga datos desde un archivo o una URL.
+
+    Args:
+        archivo (str, optional): Ruta del archivo CSV. Defaults to None.
+        url (str, optional): URL del archivo CSV. Defaults to None.
 
     Returns:
-        pd.DataFrame: DataFrame con los datos cargados.
+        pd.DataFrame: DataFrame con los datos cargados e interpolados.
     """
-    url = (
-        "https://raw.githubusercontent.com/gabrielawad/programacion-para-ingenieria/"
-        "refs/heads/main/archivos-datos/aplicaciones/analisis_enfermedades.csv"
-    )
-    df = pd.read_csv(url)
+    if archivo is not None:
+        df = pd.read_csv(archivo)
+    elif url is not None:
+        df = pd.read_csv(url)
+    else:
+        st.error("Debes proporcionar un archivo o una URL.")
+        return None
+
+    # Interpolación lineal para rellenar valores faltantes
+    df = df.interpolate(method="linear")
     return df
 
 
 def mostrar_estadisticas(df):
-    """Muestra estadísticas generales de las variables numéricas."""
+    """Muestra estadísticas generales de las variables numéricas.
+
+    Args:
+        df (pd.DataFrame): DataFrame con los datos.
+    """
     st.write("### Estadísticas Generales de Variables Numéricas")
     st.write(df.describe())
 
 
-def mostrar_estadisticas_filtradas(df):
-    """Muestra estadísticas de variables numéricas filtradas por categorías seleccionadas."""
-    st.write("### Estadísticas Filtradas por Categorías")
-
-    # Selección de variables categóricas
-    categoricas = df.select_dtypes(include=["object"]).columns
-    categoria_seleccionada = st.selectbox("Selecciona una categoría para filtrar:", categoricas)
-
-    # Selección de valores de la categoría
-    valores_categoria = df[categoria_seleccionada].unique()
-    valor_seleccionado = st.selectbox(f"Selecciona un valor de {categoria_seleccionada}:", valores_categoria)
-
-    # Filtrar el DataFrame
-    df_filtrado = df[df[categoria_seleccionada] == valor_seleccionado]
-    st.write(f"Estadísticas para {categoria_seleccionada} = {valor_seleccionado}:")
-    st.write(df_filtrado.describe())
-
-
 def mostrar_mapa_calor(df):
-    """Genera un mapa de calor de todas las enfermedades."""
+    """Genera un mapa de calor de todas las enfermedades.
+
+    Args:
+        df (pd.DataFrame): DataFrame con las columnas 'Latitud', 'Longitud', 'Casos_reportados'.
+    """
     st.write("### Mapa de Calor de Todas las Enfermedades")
 
     # Convertir a GeoDataFrame
@@ -64,35 +63,12 @@ def mostrar_mapa_calor(df):
     st.pyplot(fig)
 
 
-def mostrar_mapa_calor_por_enfermedad(df):
-    """Genera un mapa de calor para una enfermedad específica seleccionada por el usuario."""
-    st.write("### Mapa de Calor por Enfermedad")
-
-    # Selección de enfermedad
-    enfermedades = df["Enfermedad"].unique()
-    enfermedad_seleccionada = st.selectbox("Selecciona una enfermedad:", enfermedades)
-
-    # Filtrar por enfermedad
-    df_filtrado = df[df["Enfermedad"] == enfermedad_seleccionada]
-
-    # Convertir a GeoDataFrame
-    df_filtrado["geometry"] = df_filtrado.apply(lambda row: Point(row["Longitud"], row["Latitud"]), axis=1)
-    gdf = gpd.GeoDataFrame(df_filtrado, geometry="geometry")
-
-    # Descargar el mapa mundial desde una URL
-    world_url = "https://naturalearth.s3.amazonaws.com/50m_cultural/ne_50m_admin_0_countries.zip"
-    world = gpd.read_file(world_url)
-
-    # Crear el mapa
-    fig, ax = plt.subplots(figsize=(10, 6))
-    world.plot(ax=ax, color="lightgray")
-    gdf.plot(ax=ax, markersize=df_filtrado["Casos_reportados"] * 0.1, color="red", alpha=0.5)
-    plt.title(f"Mapa de Calor de {enfermedad_seleccionada}")
-    st.pyplot(fig)
-
-
 def mostrar_series_temporales(df):
-    """Genera un gráfico de series temporales de todas las enfermedades."""
+    """Genera un gráfico de series temporales de todas las enfermedades.
+
+    Args:
+        df (pd.DataFrame): DataFrame con las columnas 'Fecha' y 'Casos_reportados'.
+    """
     st.write("### Series Temporales de Todas las Enfermedades")
 
     # Agrupar por fecha y enfermedad
@@ -110,32 +86,12 @@ def mostrar_series_temporales(df):
     st.pyplot(fig)
 
 
-def mostrar_serie_temporal_por_region(df):
-    """Genera un gráfico de serie temporal para una enfermedad y región seleccionadas."""
-    st.write("### Serie Temporal por Enfermedad y Región")
-
-    # Selección de enfermedad
-    enfermedades = df["Enfermedad"].unique()
-    enfermedad_seleccionada = st.selectbox("Selecciona una enfermedad:", enfermedades, key="enfermedad_serie")
-
-    # Selección de región
-    regiones = df["Region"].unique()
-    region_seleccionada = st.selectbox("Selecciona una región:", regiones, key="region_serie")
-
-    # Filtrar por enfermedad y región
-    df_filtrado = df[(df["Enfermedad"] == enfermedad_seleccionada) & (df["Region"] == region_seleccionada)]
-
-    # Crear el gráfico
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.plot(df_filtrado["Fecha"], df_filtrado["Casos_reportados"])
-    plt.title(f"Serie Temporal de {enfermedad_seleccionada} en {region_seleccionada}")
-    plt.xlabel("Fecha")
-    plt.ylabel("Casos Reportados")
-    st.pyplot(fig)
-
-
 def mostrar_tasas_hospitalizacion(df):
-    """Genera un gráfico de barras de tasas de hospitalización por enfermedad y región."""
+    """Genera un gráfico de barras de tasas de hospitalización por enfermedad y región.
+
+    Args:
+        df (pd.DataFrame): DataFrame con las columnas 'Enfermedad', 'Region', 'Hospitalizaciones'.
+    """
     st.write("### Tasas de Hospitalización por Enfermedad y Región")
 
     # Agrupar por enfermedad y región
@@ -159,7 +115,18 @@ def main():
     st.sidebar.title("Opciones")
 
     # Cargar datos
-    df = cargar_datos()
+    st.sidebar.write("### Cargar Datos")
+    opcion_carga = st.sidebar.radio(
+        "Selecciona una opción para cargar los datos:",
+        ["Subir archivo CSV", "Ingresar URL"],
+    )
+
+    if opcion_carga == "Subir archivo CSV":
+        archivo = st.sidebar.file_uploader("Sube un archivo CSV", type=["csv"])
+        df = cargar_datos(archivo=archivo) if archivo is not None else None
+    else:
+        url = st.sidebar.text_input("Ingresa la URL del archivo CSV")
+        df = cargar_datos(url=url) if url else None
 
     if df is not None:
         # Menú de opciones en la barra lateral
@@ -167,27 +134,18 @@ def main():
             "Selecciona una opción:",
             [
                 "Estadísticas Generales",
-                "Estadísticas Filtradas",
-                "Mapa de Calor (Todas las Enfermedades)",
-                "Mapa de Calor (Por Enfermedad)",
-                "Series Temporales (Todas las Enfermedades)",
-                "Serie Temporal (Por Enfermedad y Región)",
+                "Mapa de Calor",
+                "Series Temporales",
                 "Tasas de Hospitalización",
             ],
         )
 
         if opcion == "Estadísticas Generales":
             mostrar_estadisticas(df)
-        elif opcion == "Estadísticas Filtradas":
-            mostrar_estadisticas_filtradas(df)
-        elif opcion == "Mapa de Calor (Todas las Enfermedades)":
+        elif opcion == "Mapa de Calor":
             mostrar_mapa_calor(df)
-        elif opcion == "Mapa de Calor (Por Enfermedad)":
-            mostrar_mapa_calor_por_enfermedad(df)
-        elif opcion == "Series Temporales (Todas las Enfermedades)":
+        elif opcion == "Series Temporales":
             mostrar_series_temporales(df)
-        elif opcion == "Serie Temporal (Por Enfermedad y Región)":
-            mostrar_serie_temporal_por_region(df)
         elif opcion == "Tasas de Hospitalización":
             mostrar_tasas_hospitalizacion(df)
 
