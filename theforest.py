@@ -19,8 +19,11 @@ def main():
     st.subheader("Vista previa de los datos")
     st.dataframe(datos.head())
     
+    # Verificar las columnas disponibles
+    columnas_disponibles = list(datos.columns)
+    
     # Análisis de superficie deforestada
-    if "superficie_deforestada" in datos.columns:
+    if "superficie_deforestada" in columnas_disponibles:
         st.subheader("Análisis de Superficie Deforestada")
         st.write("Superficie total deforestada:", datos["superficie_deforestada"].sum())
         fig, ax = plt.subplots()
@@ -29,7 +32,7 @@ def main():
         st.pyplot(fig)
     
     # Análisis de tasas de deforestación
-    if "tasa_deforestacion" in datos.columns:
+    if "tasa_deforestacion" in columnas_disponibles:
         st.subheader("Tasas de Deforestación")
         fig, ax = plt.subplots()
         datos["tasa_deforestacion"].hist(bins=30, ax=ax)
@@ -37,7 +40,7 @@ def main():
         st.pyplot(fig)
     
     # Gráfico de torta según tipo de vegetación
-    if "tipo_vegetacion" in datos.columns:
+    if "tipo_vegetacion" in columnas_disponibles:
         st.subheader("Distribución por Tipo de Vegetación")
         fig, ax = plt.subplots()
         datos["tipo_vegetacion"].value_counts().plot.pie(autopct='%1.1f%%', ax=ax)
@@ -46,19 +49,23 @@ def main():
     
     # Mapas por variables seleccionadas
     st.subheader("Mapas personalizados")
-    columnas_disponibles = ["latitud", "longitud", "superficie_deforestada", "altitud", "precipitacion"]
-    opciones = st.multiselect("Selecciona hasta cuatro variables", columnas_disponibles, default=["latitud", "longitud", "superficie_deforestada"])
+    opciones = st.multiselect(
+        "Selecciona hasta cuatro variables",
+        columnas_disponibles,
+        default=[col for col in ["latitud", "longitud", "superficie_deforestada"] if col in columnas_disponibles]
+    )
     
-    if len(opciones) >= 2:
+    if len(opciones) >= 2 and all(col in columnas_disponibles for col in opciones[:2]):
         fig, ax = plt.subplots()
-        scatter = ax.scatter(datos[opciones[1]], datos[opciones[0]], c=datos[opciones[2]] if len(opciones) > 2 else 'red', alpha=0.5)
+        c_values = datos[opciones[2]] if len(opciones) > 2 and opciones[2] in columnas_disponibles else 'red'
+        scatter = ax.scatter(datos[opciones[1]], datos[opciones[0]], c=c_values, alpha=0.5)
         ax.set_xlabel(opciones[1])
         ax.set_ylabel(opciones[0])
         ax.set_title("Mapa Personalizado")
         st.pyplot(fig)
     
     # Análisis de clústeres
-    if all(col in datos.columns for col in ["latitud", "longitud", "superficie_deforestada"]):
+    if all(col in columnas_disponibles for col in ["latitud", "longitud", "superficie_deforestada"]):
         st.subheader("Clústeres de Deforestación")
         k = st.slider("Selecciona el número de clústeres", 2, 10, 3)
         X = datos[["latitud", "longitud", "superficie_deforestada"]].dropna().values
