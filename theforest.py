@@ -33,13 +33,47 @@ def mostrar_mapa_deforestacion(df):
         df (pd.DataFrame): DataFrame con las columnas 'Latitud', 'Longitud', 'Superficie_Deforestada'.
     """
     st.write("### Mapa de Zonas Deforestadas")
+
+    # Filtros en la barra lateral
+    st.sidebar.write("### Filtros para el Mapa")
+    latitud_range = st.sidebar.slider(
+        "Rango de Latitud",
+        min_value=float(df["Latitud"].min()),
+        max_value=float(df["Latitud"].max()),
+        value=(float(df["Latitud"].min()), float(df["Latitud"].max())),
+    )
+    longitud_range = st.sidebar.slider(
+        "Rango de Longitud",
+        min_value=float(df["Longitud"].min()),
+        max_value=float(df["Longitud"].max()),
+        value=(float(df["Longitud"].min()), float(df["Longitud"].max())),
+    )
+    superficie_range = st.sidebar.slider(
+        "Rango de Superficie Deforestada",
+        min_value=float(df["Superficie_Deforestada"].min()),
+        max_value=float(df["Superficie_Deforestada"].max()),
+        value=(float(df["Superficie_Deforestada"].min()), float(df["Superficie_Deforestada"].max())),
+    )
+
+    # Aplicar filtros
+    filtered_df = df[
+        (df["Latitud"] >= latitud_range[0])
+        & (df["Latitud"] <= latitud_range[1])
+        & (df["Longitud"] >= longitud_range[0])
+        & (df["Longitud"] <= longitud_range[1])
+        & (df["Superficie_Deforestada"] >= superficie_range[0])
+        & (df["Superficie_Deforestada"] <= superficie_range[1])
+    ]
+
+    # Crear el mapa
     route = (
         "https://naturalearth.s3.amazonaws.com/50m_cultural/ne_50m_admin_0_countries.zip"
     )
-
     world = gpd.read_file(route)
-    df["geometry"] = df.apply(lambda row: Point(row["Longitud"], row["Latitud"]), axis=1)
-    gdf = gpd.GeoDataFrame(df, geometry="geometry")
+    filtered_df["geometry"] = filtered_df.apply(
+        lambda row: Point(row["Longitud"], row["Latitud"]), axis=1
+    )
+    gdf = gpd.GeoDataFrame(filtered_df, geometry="geometry")
     fig, ax = plt.subplots(figsize=(10, 6))
     world.plot(ax=ax, color="lightgray")
     gdf.plot(
