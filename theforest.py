@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import geopandas as gpd
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.cluster.vq import kmeans, vq
@@ -23,9 +22,18 @@ def main():
     # Análisis de superficie deforestada
     if "superficie_deforestada" in datos.columns:
         st.subheader("Análisis de Superficie Deforestada")
+        st.write("Superficie total deforestada:", datos["superficie_deforestada"].sum())
         fig, ax = plt.subplots()
         datos["superficie_deforestada"].hist(bins=30, ax=ax)
         ax.set_title("Distribución de Superficie Deforestada")
+        st.pyplot(fig)
+    
+    # Análisis de tasas de deforestación
+    if "tasa_deforestacion" in datos.columns:
+        st.subheader("Tasas de Deforestación")
+        fig, ax = plt.subplots()
+        datos["tasa_deforestacion"].hist(bins=30, ax=ax)
+        ax.set_title("Distribución de Tasas de Deforestación")
         st.pyplot(fig)
     
     # Gráfico de torta según tipo de vegetación
@@ -36,13 +44,17 @@ def main():
         ax.set_ylabel('')
         st.pyplot(fig)
     
-    # Mapa interactivo de deforestación
-    if all(col in datos.columns for col in ["latitud", "longitud", "superficie_deforestada"]):
-        st.subheader("Mapa de Deforestación")
-        gdf = gpd.GeoDataFrame(datos, geometry=gpd.points_from_xy(datos.longitud, datos.latitud))
+    # Mapas por variables seleccionadas
+    st.subheader("Mapas personalizados")
+    columnas_disponibles = ["latitud", "longitud", "superficie_deforestada", "altitud", "precipitacion"]
+    opciones = st.multiselect("Selecciona hasta cuatro variables", columnas_disponibles, default=["latitud", "longitud", "superficie_deforestada"])
+    
+    if len(opciones) >= 2:
         fig, ax = plt.subplots()
-        gdf.plot(ax=ax, color='red', markersize=gdf["superficie_deforestada"] / 1000)
-        ax.set_title("Mapa de Deforestación")
+        scatter = ax.scatter(datos[opciones[1]], datos[opciones[0]], c=datos[opciones[2]] if len(opciones) > 2 else 'red', alpha=0.5)
+        ax.set_xlabel(opciones[1])
+        ax.set_ylabel(opciones[0])
+        ax.set_title("Mapa Personalizado")
         st.pyplot(fig)
     
     # Análisis de clústeres
@@ -55,6 +67,8 @@ def main():
         fig, ax = plt.subplots()
         scatter = ax.scatter(X[:, 1], X[:, 0], c=idx, cmap='viridis')
         ax.set_title("Clústeres de Deforestación")
+        ax.set_xlabel("Longitud")
+        ax.set_ylabel("Latitud")
         st.pyplot(fig)
     
 if __name__ == "__main__":
