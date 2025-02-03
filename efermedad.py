@@ -52,8 +52,9 @@ def mostrar_mapa_calor(df):
     df["geometry"] = df.apply(lambda row: Point(row["Longitud"], row["Latitud"]), axis=1)
     gdf = gpd.GeoDataFrame(df, geometry="geometry")
 
-    # Cargar mapa mundial
-    world = gpd.read_file(gpd.datasets.get_path("naturalearth_lowres"))
+    # Descargar el mapa mundial desde una URL
+    world_url = "https://naturalearth.s3.amazonaws.com/50m_cultural/ne_50m_admin_0_countries.zip"
+    world = gpd.read_file(world_url)
 
     # Crear el mapa
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -78,8 +79,9 @@ def mostrar_mapa_calor_por_enfermedad(df):
     df_filtrado["geometry"] = df_filtrado.apply(lambda row: Point(row["Longitud"], row["Latitud"]), axis=1)
     gdf = gpd.GeoDataFrame(df_filtrado, geometry="geometry")
 
-    # Cargar mapa mundial
-    world = gpd.read_file(gpd.datasets.get_path("naturalearth_lowres"))
+    # Descargar el mapa mundial desde una URL
+    world_url = "https://naturalearth.s3.amazonaws.com/50m_cultural/ne_50m_admin_0_countries.zip"
+    world = gpd.read_file(world_url)
 
     # Crear el mapa
     fig, ax = plt.subplots(figsize=(10, 6))
