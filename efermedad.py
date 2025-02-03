@@ -7,116 +7,153 @@ from shapely.geometry import Point
 
 
 def cargar_datos():
-    """Carga datos desde la URL fija del archivo de deforestación.
+    """Carga datos desde la URL fija del archivo de análisis de enfermedades.
 
     Returns:
-        pd.DataFrame: DataFrame con los datos cargados e interpolados.
+        pd.DataFrame: DataFrame con los datos cargados.
     """
     url = (
         "https://raw.githubusercontent.com/gabrielawad/programacion-para-ingenieria/"
-        "refs/heads/main/archivos-datos/aplicaciones/deforestacion.csv"
+        "refs/heads/main/archivos-datos/aplicaciones/analisis_enfermedades.csv"
     )
     df = pd.read_csv(url)
-    return df.interpolate(method="linear")
+    return df
 
 
 def mostrar_estadisticas(df):
-    """Muestra estadísticas generales del dataset."""
-    st.write("### Estadísticas Generales")
+    """Muestra estadísticas generales de las variables numéricas."""
+    st.write("### Estadísticas Generales de Variables Numéricas")
     st.write(df.describe())
 
 
-def mostrar_mapa_deforestacion(df):
-    """Genera un mapa con las zonas de deforestación usando imágenes satelitales.
+def mostrar_estadisticas_filtradas(df):
+    """Muestra estadísticas de variables numéricas filtradas por categorías seleccionadas."""
+    st.write("### Estadísticas Filtradas por Categorías")
 
-    Args:
-        df (pd.DataFrame): DataFrame con las columnas 'Latitud', 'Longitud', 'Superficie_Deforestada'.
-    """
-    st.write("### Mapa de Zonas Deforestadas")
+    # Selección de variables categóricas
+    categoricas = df.select_dtypes(include=["object"]).columns
+    categoria_seleccionada = st.selectbox("Selecciona una categoría para filtrar:", categoricas)
 
-    # Filtros en la barra lateral
-    st.sidebar.write("### Filtros para el Mapa")
-    latitud_range = st.sidebar.slider(
-        "Rango de Latitud",
-        min_value=float(df["Latitud"].min()),
-        max_value=float(df["Latitud"].max()),
-        value=(float(df["Latitud"].min()), float(df["Latitud"].max())),
-    )
-    longitud_range = st.sidebar.slider(
-        "Rango de Longitud",
-        min_value=float(df["Longitud"].min()),
-        max_value=float(df["Longitud"].max()),
-        value=(float(df["Longitud"].min()), float(df["Longitud"].max())),
-    )
-    superficie_range = st.sidebar.slider(
-        "Rango de Superficie Deforestada",
-        min_value=float(df["Superficie_Deforestada"].min()),
-        max_value=float(df["Superficie_Deforestada"].max()),
-        value=(float(df["Superficie_Deforestada"].min()), float(df["Superficie_Deforestada"].max())),
-    )
+    # Selección de valores de la categoría
+    valores_categoria = df[categoria_seleccionada].unique()
+    valor_seleccionado = st.selectbox(f"Selecciona un valor de {categoria_seleccionada}:", valores_categoria)
 
-    # Aplicar filtros
-    filtered_df = df[
-        (df["Latitud"] >= latitud_range[0])
-        & (df["Latitud"] <= latitud_range[1])
-        & (df["Longitud"] >= longitud_range[0])
-        & (df["Longitud"] <= longitud_range[1])
-        & (df["Superficie_Deforestada"] >= superficie_range[0])
-        & (df["Superficie_Deforestada"] <= superficie_range[1])
-    ]
+    # Filtrar el DataFrame
+    df_filtrado = df[df[categoria_seleccionada] == valor_seleccionado]
+    st.write(f"Estadísticas para {categoria_seleccionada} = {valor_seleccionado}:")
+    st.write(df_filtrado.describe())
+
+
+def mostrar_mapa_calor(df):
+    """Genera un mapa de calor de todas las enfermedades."""
+    st.write("### Mapa de Calor de Todas las Enfermedades")
+
+    # Convertir a GeoDataFrame
+    df["geometry"] = df.apply(lambda row: Point(row["Longitud"], row["Latitud"]), axis=1)
+    gdf = gpd.GeoDataFrame(df, geometry="geometry")
+
+    # Cargar mapa mundial
+    world = gpd.read_file(gpd.datasets.get_path("naturalearth_lowres"))
 
     # Crear el mapa
-    route = (
-        "https://naturalearth.s3.amazonaws.com/50m_cultural/ne_50m_admin_0_countries.zip"
-    )
-    world = gpd.read_file(route)
-    filtered_df["geometry"] = filtered_df.apply(
-        lambda row: Point(row["Longitud"], row["Latitud"]), axis=1
-    )
-    gdf = gpd.GeoDataFrame(filtered_df, geometry="geometry")
     fig, ax = plt.subplots(figsize=(10, 6))
     world.plot(ax=ax, color="lightgray")
-    gdf.plot(
-        ax=ax, column="Superficie_Deforestada", legend=True, cmap="Reds", markersize=5
-    )
+    gdf.plot(ax=ax, markersize=df["Incidencia"] * 0.1, color="red", alpha=0.5)
+    plt.title("Mapa de Calor de Incidencia de Enfermedades")
     st.pyplot(fig)
 
 
-def clusterizar_deforestacion(df):
-    """Realiza un análisis de clúster sobre las superficies deforestadas.
+def mostrar_mapa_calor_por_enfermedad(df):
+    """Genera un mapa de calor para una enfermedad específica seleccionada por el usuario."""
+    st.write("### Mapa de Calor por Enfermedad")
 
-    Args:
-        df (pd.DataFrame): DataFrame con columnas 'Latitud', 'Longitud', 'Superficie_Deforestada'.
-    """
-    st.write("### Análisis de Clúster de Deforestación")
-    bins = np.histogram_bin_edges(df["Superficie_Deforestada"], bins=3)
-    df["cluster"] = np.digitize(df["Superficie_Deforestada"], bins=bins)
-    fig, ax = plt.subplots()
-    scatter = ax.scatter(df["Longitud"], df["Latitud"], c=df["cluster"], cmap="viridis")
-    plt.colorbar(scatter, label="Cluster")
-    ax.set_xlabel("Longitud")
-    ax.set_ylabel("Latitud")
-    ax.set_title("Clúster de Deforestación")
+    # Selección de enfermedad
+    enfermedades = df["Enfermedad"].unique()
+    enfermedad_seleccionada = st.selectbox("Selecciona una enfermedad:", enfermedades)
+
+    # Filtrar por enfermedad
+    df_filtrado = df[df["Enfermedad"] == enfermedad_seleccionada]
+
+    # Convertir a GeoDataFrame
+    df_filtrado["geometry"] = df_filtrado.apply(lambda row: Point(row["Longitud"], row["Latitud"]), axis=1)
+    gdf = gpd.GeoDataFrame(df_filtrado, geometry="geometry")
+
+    # Cargar mapa mundial
+    world = gpd.read_file(gpd.datasets.get_path("naturalearth_lowres"))
+
+    # Crear el mapa
+    fig, ax = plt.subplots(figsize=(10, 6))
+    world.plot(ax=ax, color="lightgray")
+    gdf.plot(ax=ax, markersize=df_filtrado["Incidencia"] * 0.1, color="red", alpha=0.5)
+    plt.title(f"Mapa de Calor de {enfermedad_seleccionada}")
     st.pyplot(fig)
 
 
-def grafico_torta_vegetacion(df):
-    """Genera un gráfico de torta según el tipo de vegetación.
+def mostrar_series_temporales(df):
+    """Genera un gráfico de series temporales de todas las enfermedades."""
+    st.write("### Series Temporales de Todas las Enfermedades")
 
-    Args:
-        df (pd.DataFrame): DataFrame con columna 'Tipo_Vegetacion'.
-    """
-    st.write("### Distribución por Tipo de Vegetación")
-    tipo_veg = df["Tipo_Vegetacion"].value_counts()
-    fig, ax = plt.subplots()
-    ax.pie(tipo_veg, labels=tipo_veg.index, autopct="%1.1f%%", startangle=90)
-    ax.set_title("Distribución por Tipo de Vegetación")
+    # Agrupar por fecha y enfermedad
+    df_agrupado = df.groupby(["Fecha", "Enfermedad"]).sum().reset_index()
+
+    # Crear el gráfico
+    fig, ax = plt.subplots(figsize=(10, 6))
+    for enfermedad in df_agrupado["Enfermedad"].unique():
+        df_enfermedad = df_agrupado[df_agrupado["Enfermedad"] == enfermedad]
+        ax.plot(df_enfermedad["Fecha"], df_enfermedad["Incidencia"], label=enfermedad)
+    plt.legend()
+    plt.title("Series Temporales de Incidencia de Enfermedades")
+    plt.xlabel("Fecha")
+    plt.ylabel("Incidencia")
+    st.pyplot(fig)
+
+
+def mostrar_serie_temporal_por_region(df):
+    """Genera un gráfico de serie temporal para una enfermedad y región seleccionadas."""
+    st.write("### Serie Temporal por Enfermedad y Región")
+
+    # Selección de enfermedad
+    enfermedades = df["Enfermedad"].unique()
+    enfermedad_seleccionada = st.selectbox("Selecciona una enfermedad:", enfermedades, key="enfermedad_serie")
+
+    # Selección de región
+    regiones = df["Region"].unique()
+    region_seleccionada = st.selectbox("Selecciona una región:", regiones, key="region_serie")
+
+    # Filtrar por enfermedad y región
+    df_filtrado = df[(df["Enfermedad"] == enfermedad_seleccionada) & (df["Region"] == region_seleccionada)]
+
+    # Crear el gráfico
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.plot(df_filtrado["Fecha"], df_filtrado["Incidencia"])
+    plt.title(f"Serie Temporal de {enfermedad_seleccionada} en {region_seleccionada}")
+    plt.xlabel("Fecha")
+    plt.ylabel("Incidencia")
+    st.pyplot(fig)
+
+
+def mostrar_tasas_hospitalizacion(df):
+    """Genera un gráfico de barras de tasas de hospitalización por enfermedad y región."""
+    st.write("### Tasas de Hospitalización por Enfermedad y Región")
+
+    # Agrupar por enfermedad y región
+    df_agrupado = df.groupby(["Enfermedad", "Region"])["Tasa_Hospitalizacion"].mean().reset_index()
+
+    # Crear el gráfico
+    fig, ax = plt.subplots(figsize=(12, 6))
+    for region in df_agrupado["Region"].unique():
+        df_region = df_agrupado[df_agrupado["Region"] == region]
+        ax.bar(df_region["Enfermedad"], df_region["Tasa_Hospitalizacion"], label=region)
+    plt.legend()
+    plt.title("Tasas de Hospitalización por Enfermedad y Región")
+    plt.xlabel("Enfermedad")
+    plt.ylabel("Tasa de Hospitalización")
     st.pyplot(fig)
 
 
 def main():
-    """Función principal para ejecutar la aplicación de análisis de deforestación."""
-    st.title("Análisis de Deforestación")
+    """Función principal para ejecutar la aplicación de análisis de enfermedades."""
+    st.title("Análisis de Distribución de Enfermedades")
     st.sidebar.title("Opciones")
 
     # Cargar datos
@@ -128,20 +165,29 @@ def main():
             "Selecciona una opción:",
             [
                 "Estadísticas Generales",
-                "Mapa de Deforestación",
-                "Análisis de Clúster",
-                "Gráfico de Vegetación",
+                "Estadísticas Filtradas",
+                "Mapa de Calor (Todas las Enfermedades)",
+                "Mapa de Calor (Por Enfermedad)",
+                "Series Temporales (Todas las Enfermedades)",
+                "Serie Temporal (Por Enfermedad y Región)",
+                "Tasas de Hospitalización",
             ],
         )
 
         if opcion == "Estadísticas Generales":
             mostrar_estadisticas(df)
-        elif opcion == "Mapa de Deforestación":
-            mostrar_mapa_deforestacion(df)
-        elif opcion == "Análisis de Clúster":
-            clusterizar_deforestacion(df)
-        elif opcion == "Gráfico de Vegetación":
-            grafico_torta_vegetacion(df)
+        elif opcion == "Estadísticas Filtradas":
+            mostrar_estadisticas_filtradas(df)
+        elif opcion == "Mapa de Calor (Todas las Enfermedades)":
+            mostrar_mapa_calor(df)
+        elif opcion == "Mapa de Calor (Por Enfermedad)":
+            mostrar_mapa_calor_por_enfermedad(df)
+        elif opcion == "Series Temporales (Todas las Enfermedades)":
+            mostrar_series_temporales(df)
+        elif opcion == "Serie Temporal (Por Enfermedad y Región)":
+            mostrar_serie_temporal_por_region(df)
+        elif opcion == "Tasas de Hospitalización":
+            mostrar_tasas_hospitalizacion(df)
 
 
 if __name__ == "__main__":
