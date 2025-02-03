@@ -1,82 +1,80 @@
-import streamlit as st
+# Importar las bibliotecas necesarias
 import pandas as pd
 import numpy as np
+import geopandas as gpd
 import matplotlib.pyplot as plt
-from scipy.cluster.vq import kmeans, vq
+from scipy.cluster.hierarchy import dendrogram, linkage
 
-# URL del archivo en GitHub
-CSV_URL = "https://raw.githubusercontent.com/gabrielawad/programacion-para-ingenieria/main/archivos-datos/aplicaciones/deforestacion.csv"
+# Cargar el archivo CSV
+df = pd.read_csv('deforestacion.csv')
 
-@st.cache_data
-def cargar_datos():
-    return pd.read_csv(CSV_URL)
+# Explorar las primeras filas del DataFrame
+print("Primeras filas del DataFrame:")
+print(df.head())
 
-def main():
-    st.title("Análisis de la Deforestación")
-    datos = cargar_datos()
+# Verificar la información general del DataFrame
+print("\nInformación del DataFrame:")
+print(df.info())
+
+# Verificar valores nulos
+print("\nValores nulos por columna:")
+print(df.isnull().sum())
+
+# Calcular la superficie deforestada total
+superficie_total = df['Superficie_Deforestada'].sum()
+print(f"\nSuperficie deforestada total: {superficie_total}")
+
+# Calcular la tasa de deforestación promedio
+tasa_promedio = df['Tasa_Deforestacion'].mean()
+print(f"Tasa de deforestación promedio: {tasa_promedio}")
+
+# Calcular la superficie deforestada por tipo de vegetación
+superficie_por_vegetacion = df.groupby('Tipo_Vegetacion')['Superficie_Deforestada'].sum()
+print("\nSuperficie deforestada por tipo de vegetación:")
+print(superficie_por_vegetacion)
+
+# Convertir el DataFrame en un GeoDataFrame
+gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.Longitud, df.Latitud))
+
+# Visualizar las zonas deforestadas en un mapa mundial
+world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+ax = world.plot(figsize=(10, 6), color='lightgray')
+gdf.plot(ax=ax, color='red', markersize=5)
+plt.title('Zonas Deforestadas')
+plt.show()
+
+# Función para crear mapas personalizados según variables seleccionadas
+def mapa_personalizado(df, variables, rangos):
+    filtro = np.ones(len(df), dtype=bool)
+    for var, rango in zip(variables, rangos):
+        filtro &= (df[var] >= rango[0]) & (df[var] <= rango[1])
     
-    # Mostrar datos iniciales
-    st.subheader("Vista previa de los datos")
-    st.dataframe(datos.head())
+    gdf_filtrado = gdf[filtro]
     
-    # Verificar las columnas disponibles
-    columnas_disponibles = list(datos.columns)
-    
-    # Análisis de superficie deforestada
-    if "superficie_deforestada" in columnas_disponibles:
-        st.subheader("Análisis de Superficie Deforestada")
-        st.write("Superficie total deforestada:", datos["superficie_deforestada"].sum())
-        fig, ax = plt.subplots()
-        datos["superficie_deforestada"].hist(bins=30, ax=ax)
-        ax.set_title("Distribución de Superficie Deforestada")
-        st.pyplot(fig)
-    
-    # Análisis de tasas de deforestación
-    if "tasa_deforestacion" in columnas_disponibles:
-        st.subheader("Tasas de Deforestación")
-        fig, ax = plt.subplots()
-        datos["tasa_deforestacion"].hist(bins=30, ax=ax)
-        ax.set_title("Distribución de Tasas de Deforestación")
-        st.pyplot(fig)
-    
-    # Gráfico de torta según tipo de vegetación
-    if "tipo_vegetacion" in columnas_disponibles:
-        st.subheader("Distribución por Tipo de Vegetación")
-        fig, ax = plt.subplots()
-        datos["tipo_vegetacion"].value_counts().plot.pie(autopct='%1.1f%%', ax=ax)
-        ax.set_ylabel('')
-        st.pyplot(fig)
-    
-    # Mapas por variables seleccionadas
-    st.subheader("Mapas personalizados")
-    opciones = st.multiselect(
-        "Selecciona hasta cuatro variables",
-        columnas_disponibles,
-        default=[col for col in ["latitud", "longitud", "superficie_deforestada"] if col in columnas_disponibles]
-    )
-    
-    if len(opciones) >= 2 and all(col in columnas_disponibles for col in opciones[:2]):
-        fig, ax = plt.subplots()
-        c_values = datos[opciones[2]] if len(opciones) > 2 and opciones[2] in columnas_disponibles else 'red'
-        scatter = ax.scatter(datos[opciones[1]], datos[opciones[0]], c=c_values, alpha=0.5)
-        ax.set_xlabel(opciones[1])
-        ax.set_ylabel(opciones[0])
-        ax.set_title("Mapa Personalizado")
-        st.pyplot(fig)
-    
-    # Análisis de clústeres
-    if all(col in columnas_disponibles for col in ["latitud", "longitud", "superficie_deforestada"]):
-        st.subheader("Clústeres de Deforestación")
-        k = st.slider("Selecciona el número de clústeres", 2, 10, 3)
-        X = datos[["latitud", "longitud", "superficie_deforestada"]].dropna().values
-        centroids, _ = kmeans(X, k)
-        idx, _ = vq(X, centroids)
-        fig, ax = plt.subplots()
-        scatter = ax.scatter(X[:, 1], X[:, 0], c=idx, cmap='viridis')
-        ax.set_title("Clústeres de Deforestación")
-        ax.set_xlabel("Longitud")
-        ax.set_ylabel("Latitud")
-        st.pyplot(fig)
-    
-if __name__ == "__main__":
-    main()
+    ax = world.plot(figsize=(10, 6), color='lightgray')
+    gdf_filtrado.plot(ax=ax, color='red', markersize=5)
+    plt.title('Mapa Personalizado')
+    plt.show()
+
+# Ejemplo de uso de la función mapa_personalizado
+variables = ['Latitud', 'Longitud', 'Altitud', 'Precipitacion']
+rangos = [(-5, 5), (-80, -50), (0, 1000), (0, 2000)]
+mapa_personalizado(df, variables, rangos)
+
+# Análisis de clúster de superficies deforestadas
+X = df[['Latitud', 'Longitud', 'Superficie_Deforestada']]
+Z = linkage(X, method='ward')
+
+# Graficar el dendrograma
+plt.figure(figsize=(10, 6))
+dendrogram(Z)
+plt.title('Dendrograma de Clúster de Superficies Deforestadas')
+plt.xlabel('Índice del Punto')
+plt.ylabel('Distancia')
+plt.show()
+
+# Gráfico de torta según tipo de vegetación
+plt.figure(figsize=(8, 8))
+plt.pie(superficie_por_vegetacion, labels=superficie_por_vegetacion.index, autopct='%1.1f%%', startangle=140)
+plt.title('Distribución de la Superficie Deforestada por Tipo de Vegetación')
+plt.show()
