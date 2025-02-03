@@ -5,8 +5,11 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 from scipy.cluster.hierarchy import dendrogram, linkage
 
-# Cargar el archivo CSV
-df = pd.read_csv('deforestacion.csv')
+# URL del archivo CSV en GitHub
+url = "https://github.com/gabrielawad/programacion-para-ingenieria/raw/main/archivos-datos/aplicaciones/deforestacion.csv"
+
+# Cargar el archivo CSV desde la URL
+df = pd.read_csv(url)
 
 # Explorar las primeras filas del DataFrame
 print("Primeras filas del DataFrame:")
