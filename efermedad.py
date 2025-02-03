@@ -59,7 +59,7 @@ def mostrar_mapa_calor(df):
     # Crear el mapa
     fig, ax = plt.subplots(figsize=(10, 6))
     world.plot(ax=ax, color="lightgray")
-    gdf.plot(ax=ax, markersize=df["Incidencia"] * 0.1, color="red", alpha=0.5)
+    gdf.plot(ax=ax, markersize=df["Casos_reportados"] * 0.1, color="red", alpha=0.5)
     plt.title("Mapa de Calor de Incidencia de Enfermedades")
     st.pyplot(fig)
 
@@ -86,7 +86,7 @@ def mostrar_mapa_calor_por_enfermedad(df):
     # Crear el mapa
     fig, ax = plt.subplots(figsize=(10, 6))
     world.plot(ax=ax, color="lightgray")
-    gdf.plot(ax=ax, markersize=df_filtrado["Incidencia"] * 0.1, color="red", alpha=0.5)
+    gdf.plot(ax=ax, markersize=df_filtrado["Casos_reportados"] * 0.1, color="red", alpha=0.5)
     plt.title(f"Mapa de Calor de {enfermedad_seleccionada}")
     st.pyplot(fig)
 
@@ -96,17 +96,17 @@ def mostrar_series_temporales(df):
     st.write("### Series Temporales de Todas las Enfermedades")
 
     # Agrupar por fecha y enfermedad
-    df_agrupado = df.groupby(["Fecha", "Enfermedad"]).sum().reset_index()
+    df_agrupado = df.groupby(["Fecha", "Enfermedad"]).sum(numeric_only=True).reset_index()
 
     # Crear el gráfico
     fig, ax = plt.subplots(figsize=(10, 6))
     for enfermedad in df_agrupado["Enfermedad"].unique():
         df_enfermedad = df_agrupado[df_agrupado["Enfermedad"] == enfermedad]
-        ax.plot(df_enfermedad["Fecha"], df_enfermedad["Incidencia"], label=enfermedad)
+        ax.plot(df_enfermedad["Fecha"], df_enfermedad["Casos_reportados"], label=enfermedad)
     plt.legend()
     plt.title("Series Temporales de Incidencia de Enfermedades")
     plt.xlabel("Fecha")
-    plt.ylabel("Incidencia")
+    plt.ylabel("Casos Reportados")
     st.pyplot(fig)
 
 
@@ -127,10 +127,10 @@ def mostrar_serie_temporal_por_region(df):
 
     # Crear el gráfico
     fig, ax = plt.subplots(figsize=(10, 6))
-    ax.plot(df_filtrado["Fecha"], df_filtrado["Incidencia"])
+    ax.plot(df_filtrado["Fecha"], df_filtrado["Casos_reportados"])
     plt.title(f"Serie Temporal de {enfermedad_seleccionada} en {region_seleccionada}")
     plt.xlabel("Fecha")
-    plt.ylabel("Incidencia")
+    plt.ylabel("Casos Reportados")
     st.pyplot(fig)
 
 
@@ -139,17 +139,17 @@ def mostrar_tasas_hospitalizacion(df):
     st.write("### Tasas de Hospitalización por Enfermedad y Región")
 
     # Agrupar por enfermedad y región
-    df_agrupado = df.groupby(["Enfermedad", "Region"])["Tasa_Hospitalizacion"].mean().reset_index()
+    df_agrupado = df.groupby(["Enfermedad", "Region"])["Hospitalizaciones"].mean().reset_index()
 
     # Crear el gráfico
     fig, ax = plt.subplots(figsize=(12, 6))
     for region in df_agrupado["Region"].unique():
         df_region = df_agrupado[df_agrupado["Region"] == region]
-        ax.bar(df_region["Enfermedad"], df_region["Tasa_Hospitalizacion"], label=region)
+        ax.bar(df_region["Enfermedad"], df_region["Hospitalizaciones"], label=region)
     plt.legend()
     plt.title("Tasas de Hospitalización por Enfermedad y Región")
     plt.xlabel("Enfermedad")
-    plt.ylabel("Tasa de Hospitalización")
+    plt.ylabel("Hospitalizaciones")
     st.pyplot(fig)
 
 
