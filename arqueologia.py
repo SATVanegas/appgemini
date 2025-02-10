@@ -3,6 +3,7 @@ import pandas as pd
 import geopandas as gpd
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.stats as stats
 from scipy.interpolate import griddata
 
 # Configuración de la app
@@ -49,6 +50,57 @@ df["Fecha_Descubrimiento"] = df["Fecha_Descubrimiento"].fillna(method="ffill")
 st.write("### Valores nulos después de la interpolación:")
 st.dataframe(df.isnull().sum())
 
+# 🔹 Gráfico de cantidad de artefactos por cultura
+st.write("## Cantidad de Artefactos por Cultura")
+conteo_culturas = df["Cultura_Asociada"].value_counts()
+
+fig, ax = plt.subplots(figsize=(12, 6))
+conteo_culturas.plot(kind="bar", color="skyblue", edgecolor="black", ax=ax)
+
+ax.set_xlabel("Cultura")
+ax.set_ylabel("Cantidad de Artefactos")
+ax.set_title("Cantidad de Artefactos por Cultura")
+ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
+
+st.pyplot(fig)
+
+# 🔹 Gráfico de dispersión: Relación entre Edad y Profundidad
+st.write("## Relación entre Edad y Profundidad del Artefacto")
+
+# Filtrar datos con valores válidos en "Edad_Aprox_Anios" y "Profundidad_Excavación_m"
+datos_filtrados = df.dropna(subset=["Edad_Aprox_Anios", "Profundidad_Excavación_m"])
+
+# Calcular la correlación de Pearson
+if not datos_filtrados.empty:
+    correlacion, p_valor = stats.pearsonr(
+        datos_filtrados["Edad_Aprox_Anios"], datos_filtrados["Profundidad_Excavación_m"]
+    )
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    ax.scatter(
+        datos_filtrados["Edad_Aprox_Anios"],
+        datos_filtrados["Profundidad_Excavación_m"],
+        alpha=0.6,
+        color="royalblue",
+    )
+
+    ax.set_xlabel("Edad Aproximada del Artefacto (años)")
+    ax.set_ylabel("Profundidad del Hallazgo (metros)")
+    ax.set_title(
+        f"Relación entre Edad y Profundidad\nCorrelación de Pearson: {correlacion:.2f}"
+    )
+
+    st.pyplot(fig)
+
+    # Mostrar valores de correlación
+    st.write(f"**Correlación de Pearson:** {correlacion:.2f}")
+    st.write(f"**P-valor:** {p_valor:.5f}")
+else:
+    st.warning("No hay suficientes datos válidos para calcular la correlación.")
+
+# 🔹 Mapa de Calor de Artefactos Tallados
+st.write("## Mapa de Calor: Densidad de Artefactos Tallados")
+
 # Cargar el mapa mundial desde Natural Earth
 naturalearth_lowres = (
     "https://naciscdn.org/naturalearth/110m/cultural/"
@@ -73,7 +125,6 @@ gdf_tallados = gpd.GeoDataFrame(
 # Definir la cuadrícula para la interpolación
 x, y = gdf_tallados.geometry.x, gdf_tallados.geometry.y
 
-# Verificar que hay suficientes puntos
 if len(x) >= 4:
     grid_x, grid_y = np.meshgrid(
         np.linspace(x.min(), x.max(), 100),
@@ -84,7 +135,6 @@ if len(x) >= 4:
     grid_z = griddata((x, y), np.ones_like(x), (grid_x, grid_y), method="cubic")
     grid_z = np.nan_to_num(grid_z)  # Reemplazar NaN con 0
 
-    # Crear la figura
     fig, ax = plt.subplots(figsize=(12, 8))
 
     # Dibujar el mapa mundial
