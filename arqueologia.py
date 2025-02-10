@@ -4,7 +4,6 @@ import geopandas as gpd
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats as stats
-from scipy.interpolate import griddata
 
 # Configuración de la app
 st.set_page_config(page_title="Mi primera app", layout="wide")
@@ -67,10 +66,7 @@ st.pyplot(fig)
 # 🔹 Gráfico de dispersión: Relación entre Edad y Profundidad
 st.write("## Relación entre Edad y Profundidad del Artefacto")
 
-# Filtrar datos con valores válidos en "Edad_Aprox_Anios" y "Profundidad_Excavación_m"
 datos_filtrados = df.dropna(subset=["Edad_Aprox_Anios", "Profundidad_Excavación_m"])
-
-# Calcular la correlación de Pearson
 if not datos_filtrados.empty:
     correlacion, p_valor = stats.pearsonr(
         datos_filtrados["Edad_Aprox_Anios"], datos_filtrados["Profundidad_Excavación_m"]
@@ -92,7 +88,6 @@ if not datos_filtrados.empty:
 
     st.pyplot(fig)
 
-    # Mostrar valores de correlación
     st.write(f"**Correlación de Pearson:** {correlacion:.2f}")
     st.write(f"**P-valor:** {p_valor:.5f}")
 else:
@@ -101,10 +96,7 @@ else:
 # 🔹 Gráfico de barras apiladas: Distribución de Materiales según Cultura Asociada
 st.write("## Distribución de Materiales según la Cultura Asociada")
 
-# Filtrar datos sin valores nulos en "Cultura" y "Material"
 datos_filtrados = df.dropna(subset=["Cultura_Asociada", "Material"])
-
-# Contar la cantidad de artefactos por Cultura y Material
 conteo_materiales = datos_filtrados.groupby(["Cultura_Asociada", "Material"]).size().unstack(fill_value=0)
 
 fig, ax = plt.subplots(figsize=(12, 6))
@@ -120,22 +112,16 @@ st.pyplot(fig)
 # 🔹 Mapa de ubicación geográfica de los artefactos
 st.write("## Ubicación Geográfica de los Artefactos")
 
-# Cargar el mapa base del mundo
 naturalearth_lowres = (
     "https://naciscdn.org/naturalearth/110m/"
     "cultural/ne_110m_admin_0_countries.zip"
 )
 gdf = gpd.read_file(naturalearth_lowres)
 
-# Crear la figura y el eje
 fig, ax = plt.subplots(figsize=(12, 8))
-
-# Graficar el mapa base
 gdf.plot(ax=ax, color="lightgray", edgecolor="black")
 
-# Filtrar datos con coordenadas válidas
 df_coordenadas = df.dropna(subset=["Latitud", "Longitud"])
-
 if not df_coordenadas.empty:
     ax.scatter(
         df_coordenadas["Longitud"],
@@ -155,6 +141,39 @@ if not df_coordenadas.empty:
     st.pyplot(fig)
 else:
     st.warning("No hay suficientes datos con coordenadas para graficar el mapa.")
+
+# 🔹 Gráfico de Patrones Decorativos por Cultura
+st.write("## Patrones Decorativos por Cultura")
+
+patrones_por_cultura = df.groupby(["Cultura_Asociada", "Patrones_Decorativos"]).size().unstack()
+
+fig, ax = plt.subplots(figsize=(12, 6))
+patrones_por_cultura.plot(kind="bar", stacked=True, ax=ax, colormap="viridis")
+
+ax.set_xlabel("Cultura Asociada")
+ax.set_ylabel("Cantidad de Artefactos")
+ax.set_title("Patrones Decorativos por Cultura")
+ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
+ax.legend(title="Patrones Decorativos", bbox_to_anchor=(1.05, 1), loc="upper left")
+ax.grid(axis="y", linestyle="--", alpha=0.7)
+
+st.pyplot(fig)
+
+# 🔹 Gráfico de Tendencia de Descubrimientos por Año
+st.write("## Tendencia de Descubrimientos por Año")
+
+df["Fecha_Descubrimiento"] = pd.to_datetime(df["Fecha_Descubrimiento"], errors="coerce")
+hallazgos_por_anio = df["Fecha_Descubrimiento"].dt.year.value_counts().sort_index()
+
+fig, ax = plt.subplots(figsize=(12, 6))
+ax.plot(hallazgos_por_anio.index, hallazgos_por_anio.values, marker="o", linestyle="-", color="b")
+
+ax.set_xlabel("Año de Descubrimiento")
+ax.set_ylabel("Cantidad de Artefactos")
+ax.set_title("Tendencia de Descubrimientos por Año")
+ax.grid(axis="y", linestyle="--", alpha=0.7)
+
+st.pyplot(fig)
 
 # Mostrar vista previa de los datos corregidos
 st.write("### Vista previa de los datos corregidos:")
