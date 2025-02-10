@@ -98,68 +98,63 @@ if not datos_filtrados.empty:
 else:
     st.warning("No hay suficientes datos válidos para calcular la correlación.")
 
-# 🔹 Mapa de Calor de Artefactos Tallados
-st.write("## Mapa de Calor: Densidad de Artefactos Tallados")
+# 🔹 Gráfico de barras apiladas: Distribución de Materiales según Cultura Asociada
+st.write("## Distribución de Materiales según la Cultura Asociada")
 
-# Cargar el mapa mundial desde Natural Earth
+# Filtrar datos sin valores nulos en "Cultura" y "Material"
+datos_filtrados = df.dropna(subset=["Cultura_Asociada", "Material"])
+
+# Contar la cantidad de artefactos por Cultura y Material
+conteo_materiales = datos_filtrados.groupby(["Cultura_Asociada", "Material"]).size().unstack(fill_value=0)
+
+fig, ax = plt.subplots(figsize=(12, 6))
+conteo_materiales.plot(kind="bar", stacked=True, ax=ax, colormap="viridis")
+
+ax.set_xlabel("Cultura Asociada")
+ax.set_ylabel("Cantidad de Artefactos")
+ax.set_title("Distribución de Materiales según la Cultura Asociada")
+ax.legend(title="Material", bbox_to_anchor=(1.05, 1), loc="upper left")
+
+st.pyplot(fig)
+
+# 🔹 Mapa de ubicación geográfica de los artefactos
+st.write("## Ubicación Geográfica de los Artefactos")
+
+# Cargar el mapa base del mundo
 naturalearth_lowres = (
-    "https://naciscdn.org/naturalearth/110m/cultural/"
-    "ne_110m_admin_0_countries.zip"
+    "https://naciscdn.org/naturalearth/110m/"
+    "cultural/ne_110m_admin_0_countries.zip"
 )
-mapa_mundial = gpd.read_file(naturalearth_lowres)
+gdf = gpd.read_file(naturalearth_lowres)
 
-# Filtrar artefactos tallados con coordenadas válidas
-artefactos_tallados = df[df["Técnica_Fabricación"] == "tallado"].dropna(
-    subset=["Latitud", "Longitud"]
-)
+# Crear la figura y el eje
+fig, ax = plt.subplots(figsize=(12, 8))
 
-# Crear un GeoDataFrame con coordenadas geográficas
-gdf_tallados = gpd.GeoDataFrame(
-    artefactos_tallados,
-    geometry=gpd.points_from_xy(
-        artefactos_tallados["Longitud"], artefactos_tallados["Latitud"]
-    ),
-    crs="EPSG:4326",
-)
+# Graficar el mapa base
+gdf.plot(ax=ax, color="lightgray", edgecolor="black")
 
-# Definir la cuadrícula para la interpolación
-x, y = gdf_tallados.geometry.x, gdf_tallados.geometry.y
+# Filtrar datos con coordenadas válidas
+df_coordenadas = df.dropna(subset=["Latitud", "Longitud"])
 
-if len(x) >= 4:
-    grid_x, grid_y = np.meshgrid(
-        np.linspace(x.min(), x.max(), 100),
-        np.linspace(y.min(), y.max(), 100),
+if not df_coordenadas.empty:
+    ax.scatter(
+        df_coordenadas["Longitud"],
+        df_coordenadas["Latitud"],
+        c="red",
+        marker="o",
+        alpha=0.7,
+        label="Artefactos",
     )
 
-    # Interpolar la densidad de artefactos
-    grid_z = griddata((x, y), np.ones_like(x), (grid_x, grid_y), method="cubic")
-    grid_z = np.nan_to_num(grid_z)  # Reemplazar NaN con 0
-
-    fig, ax = plt.subplots(figsize=(12, 8))
-
-    # Dibujar el mapa mundial
-    mapa_mundial.boundary.plot(ax=ax, linewidth=0.8, color="black")
-
-    # Dibujar el mapa de calor
-    contour = ax.contourf(grid_x, grid_y, grid_z, cmap="YlGnBu", alpha=0.7)
-
-    # Dibujar los puntos de los artefactos
-    ax.scatter(x, y, color="red", s=10, label="Artefactos Tallados")
-
-    # Agregar la barra de color
-    cbar = plt.colorbar(contour, ax=ax, orientation="vertical")
-    cbar.set_label("Densidad de Artefactos")
-
-    # Etiquetas y título
-    ax.set_title("Mapa de Calor: Densidad de Artefactos Tallados")
+    ax.set_title("Ubicación Geográfica de los Artefactos")
     ax.set_xlabel("Longitud")
     ax.set_ylabel("Latitud")
     ax.legend()
+    ax.grid(True)
 
-    # Mostrar el mapa en Streamlit
     st.pyplot(fig)
 else:
-    st.warning("No hay suficientes puntos para la interpolación. Se requieren al menos 4.")
+    st.warning("No hay suficientes datos con coordenadas para graficar el mapa.")
 
 # Mostrar vista previa de los datos corregidos
 st.write("### Vista previa de los datos corregidos:")
